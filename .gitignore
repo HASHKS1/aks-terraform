@@ -1,0 +1,4 @@
+.terraform.lock.hcl
+backend.tf
+azurek8s.config
+.terraform

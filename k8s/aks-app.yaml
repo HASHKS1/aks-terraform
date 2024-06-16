@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aks-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aks-app
+  template:
+    metadata:
+      labels:
+        app: aks-app
+        azure.workload.identity/use: "true"
+    spec:
+      serviceAccountName: "aks01-identity-sa" #referenced in federated identity object
+      containers:
+      - name: aks-app
+        image: mcr.microsoft.com/azuredocs/aks-helloworld:v1
+        ports:
+          - name: http
+            containerPort: 80
+        volumeMounts:
+        - name: kv-secrets
+          mountPath: "/mnt/secrets"
+          readOnly: true
+        env:
+        - name: TITLE
+          valueFrom:
+            secretKeyRef:
+              name: so-aks
+              key: aks-title
+      volumes:
+        - name: kv-secrets
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "azure-kv-identity" # should match secretproviderclass name
+---
+
+kind: Service
+apiVersion: v1
+metadata:
+  name: aks-app-svc
+spec:
+  selector:
+    app: aks-app
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 80
+    targetPort: http
+    protocol: TCP
+
+---
+
+kind: Ingress
+apiVersion: networking.k8s.io/v1
+metadata:
+  name:  aks-app-ingress-staging-01
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-staging-01
+spec:
+  ingressClassName: ingress-nginx
+  rules:
+    - host: devops4u-tech.lkhabir.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: aks-app-svc
+                port:
+                  number: 80
+  tls:
+    - hosts:
+        - devops4u-tech.lkhabir.com
+      secretName: stagingdevops4u-tech-tls

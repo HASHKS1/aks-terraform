@@ -1,0 +1,11 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata: 
+  name: staging-devops4u-tech
+spec:
+  secretName: stagingdevops4u-tech-tls
+  dnsNames:
+    - "devops4u-tech.lkhabir.com"
+  issuerRef:
+    name: letsencrypt-staging-01
+    kind: ClusterIssuer
